@@ -1,0 +1,41 @@
+# Build results
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+*.userprefs
+*.csproj.user
+
+# Visual Studio Code
+.vscode/
+
+# Logs
+*.log
+
+# NuGet packages
+*.nupkg
+packages/
+.nuget/
+
+# Dotnet stuff
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Cache
+.cache/
+*.db
+*.db-shm
+*.db-wal
+
+# macOS junk
+.DS_Store
+
+# Windows junk
+Thumbs.db
