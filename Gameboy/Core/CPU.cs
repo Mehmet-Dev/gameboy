@@ -20,7 +20,7 @@ public class CPU
         int sum = Reg.A + value;
 
         bool overflowed = sum > 255;
-        
+
         Reg.ZeroFlag = (byte)sum == 0;
         Reg.SubtractFlag = false;
         Reg.CarryFlag = overflowed;
@@ -179,8 +179,63 @@ public class CPU
 
         Reg.ZeroFlag = value == 0;
         Reg.SubtractFlag = false;
-        
+
         return value;
+    }
+
+    /// <summary>
+    /// Decrement a value
+    /// </summary>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    private byte Decrement(byte value)
+    {
+        Reg.HalfCarryFlag = (value & 0xf) == 0x0;
+        value--;
+
+        Reg.ZeroFlag = value == 0;
+        Reg.SubtractFlag = true;
+
+        return value;
+    }
+
+    /// <summary>
+    /// Toggle the status of the carry flagt
+    /// </summary>
+    private void ComplementCarryFlag()
+    {
+        Reg.CarryFlag = !Reg.CarryFlag;
+
+        Reg.SubtractFlag = false;
+        Reg.HalfCarryFlag = !Reg.HalfCarryFlag;
+    }
+
+    /// <summary>
+    /// Sets the carry flag to true
+    /// </summary>
+    private void SetCarryFlag()
+    {
+        Reg.CarryFlag = true;
+
+        Reg.SubtractFlag = false;
+        Reg.HalfCarryFlag = false;
+    }
+
+    /// <summary>
+    /// Bit rotate A register right through the carry flag
+    /// </summary>
+    private void RotateRightARegister()
+    {
+        int oldCarryBit = (Reg.CarryFlag ? 1 : 0) << 7;
+        int carry = Reg.A & 0x01;
+
+        Reg.A = (byte)(Reg.A >> 1);
+        Reg.A = (byte)(Reg.A | oldCarryBit);
+
+        Reg.CarryFlag = carry != 0;
+        Reg.ZeroFlag = false;
+        Reg.SubtractFlag = false;
+        Reg.HalfCarryFlag = false;
     }
 
     // ================== END HELPER ==================
@@ -192,16 +247,16 @@ public class CPU
 
     private void AddHL(ushort value)
         => Reg.HL = Add16(Reg.HL, value);
-    
+
     private void Adc(byte value)
         => Reg.A = AddWithCarry(value);
-    
+
     private void SubA(byte value)
         => Reg.A = Sub(value);
-    
+
     private void Sbc(byte value)
         => Reg.A = SubWithCarry(value);
-    
+
     private void And(byte value)
         => Reg.A = BitwiseAnd(value);
 
@@ -214,7 +269,20 @@ public class CPU
     private void Cp(byte value)
         => Compare(value);
 
+    private void Inc(byte value)
+        => Increment(value);
+
+    private void Dec(byte value)
+        => Decrement(value);
+
+    private void Ccf()
+        => ComplementCarryFlag();
+
+    private void Scf()
+        => SetCarryFlag();
     
+    private void Rra()
+        => RotateRightARegister();
 
     // ================== END OPCODES ==================
 }
