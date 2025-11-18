@@ -94,7 +94,93 @@ public class CPU
     /// <returns></returns>
     private byte SubWithCarry(byte value)
     {
+        int carryIn = Reg.CarryFlag ? 1 : 0;
+
+        int sub = Reg.A - value - carryIn;
+
+        bool underflowed = sub < 0;
+
+        Reg.ZeroFlag = (byte)sub == 0;
+        Reg.SubtractFlag = true;
+        Reg.CarryFlag = underflowed;
+        Reg.HalfCarryFlag = (Reg.A & 0xf) < ((value & 0xf) + carryIn);
+
+        return (byte)sub;
+    }
+
+    /// <summary>
+    /// Perform a bitwise AND operation on a byte
+    /// </summary>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    private byte BitwiseAnd(byte value)
+    {
+        int and = Reg.A & value;
+
+        Reg.ZeroFlag = (byte)and == 0;
+        Reg.SubtractFlag = false;
+        Reg.CarryFlag = false;
+        Reg.HalfCarryFlag = true;
+
+        return (byte)and;
+    }
+
+    /// <summary>
+    /// Do a bitwise OR on a byte
+    /// </summary>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    private byte BitwiseOr(byte value)
+    {
+        int or = Reg.A | value;
+
+        Reg.ZeroFlag = (byte)or == 0;
+        Reg.SubtractFlag = false;
+        Reg.CarryFlag = false;
+        Reg.HalfCarryFlag = false;
+
+        return (byte)or;
+    }
+
+    /// <summary>
+    /// Do a bitwise XOR operation on a byte
+    /// </summary>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    private byte BitwiseXor(byte value)
+    {
+        int xor = Reg.A ^ value;
+
+        Reg.ZeroFlag = (byte)xor == 0;
+        Reg.SubtractFlag = false;
+        Reg.CarryFlag = false;
+        Reg.HalfCarryFlag = false;
+
+        return (byte)xor;
+    }
+
+    /// <summary>
+    /// Compare a value to reg A
+    /// </summary>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    private void Compare(byte value)
+        => Sub(value);
+
+    /// <summary>
+    /// Increment a value
+    /// </summary>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    private byte Increment(byte value)
+    {
+        Reg.HalfCarryFlag = (value & 0xf) == 0xF;
+        value++;
+
+        Reg.ZeroFlag = value == 0;
+        Reg.SubtractFlag = false;
         
+        return value;
     }
 
     // ================== END HELPER ==================
@@ -113,6 +199,21 @@ public class CPU
     private void SubA(byte value)
         => Reg.A = Sub(value);
     
+    private void Sbc(byte value)
+        => Reg.A = SubWithCarry(value);
+    
+    private void And(byte value)
+        => Reg.A = BitwiseAnd(value);
+
+    private void Or(byte value)
+        => Reg.A = BitwiseOr(value);
+
+    private void Xor(byte value)
+        => Reg.A = BitwiseXor(value);
+
+    private void Cp(byte value)
+        => Compare(value);
+
     
 
     // ================== END OPCODES ==================
