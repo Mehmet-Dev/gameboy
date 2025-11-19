@@ -1,12 +1,79 @@
+using Gameboy.Utils;
+
 namespace Gameboy.Core;
 
 /// <summary>
 /// The Gameboy CPU is a custom chip called Sharp LR35902.
 /// It's similar to the Intel 8080 and Zilog Z80.
 /// </summary>
-public class CPU
+public partial class CPU
 {
     private Registers Reg;
+    private ushort ProgramCounter;
+    private MemoryBus Bus = new();
+    private bool InterruptsEnabled;
+    private bool EnableInterruptsAfterNextInstruction;
+    private bool IsHalted;
+
+    public delegate ushort OpcodeHandler();
+    private OpcodeHandler[] OpcodeTable = new OpcodeHandler[0x100];
+    private OpcodeHandler[] CbOpcodeTable = new OpcodeHandler[0x100];
+
+    /// <summary>
+    /// Run the program i think
+    /// </summary>
+    private void Step()
+    {
+        ushort extra;
+        byte opcode = Bus.ReadByte(ProgramCounter);
+        ProgramCounter++;
+
+        if (IsHalted)
+        {
+            // CPU does nothing this cycle
+            // (Game Boy still consumes cycles, but runs no opcode)
+            return;
+        }
+
+        if (opcode == 0xCB)
+        {
+            byte cb = Bus.ReadByte(ProgramCounter);
+            ProgramCounter++;
+            extra = CbOpcodeTable[cb]();
+            ProgramCounter += extra;
+
+            if (EnableInterruptsAfterNextInstruction)
+            {
+                InterruptsEnabled = true;
+                EnableInterruptsAfterNextInstruction = false;
+            }
+
+            return;
+        }
+
+        extra = OpcodeTable[opcode]();
+        ProgramCounter += extra;
+    }
+
+    private void InitializeOpcodeTable()
+    {
+        for (int i = 0; i < 0x100; i++)
+        {
+            // OpcodeTable[i] = Nop;
+        }
+    }
+
+    private void InitializeCbOpcodeTable()
+    {
+        for (int i = 0; i < 0x100; i++)
+            CbOpcodeTable[i] = Cb_Unimplemented;
+    }
+
+    private ushort Cb_Unimplemented()
+    {
+        throw new NotImplementedException("Unimplemented CB opcode");
+    }
+
 
     // ================== HELPER METHODS ==================
 
@@ -303,68 +370,436 @@ public class CPU
     /// Test whether a bit is set ? gameboy emulators smell wtf
     /// </summary>
     /// <param name="bit"></param>
-    private void BitTest(int bit)
+    private void BitTest(byte value, int bit)
     {
-        
+        Reg.SubtractFlag = false;
+        Reg.HalfCarryFlag = true;
+        Reg.ZeroFlag = (value & (1 << bit)) == 0;
     }
+
+    /// <summary>
+    /// Resets a certain bit of a registry
+    /// </summary>
+    /// <param name="value"></param>
+    /// <param name="bit"></param>
+    private byte ResetBit(byte value, int bit)
+    {
+        int mask = ~(1 << bit);
+        return (byte)(value & mask);
+    }
+
+    /// <summary>
+    /// Sets a bit of a registry to 1
+    /// </summary>
+    /// <param name="value"></param>
+    /// <param name="bit"></param>
+    /// <returns></returns>
+    private byte SetBit(byte value, int bit)
+    {
+        int mask = 1 << bit;
+        return (byte)(value | mask);
+    }
+
+    /// <summary>
+    /// Bit shift a specific registry to 1
+    /// </summary>
+    /// <returns></returns>
+    private byte ShiftRightLogical(byte value)
+    {
+        int carry = value & 0x01;
+        value = (byte)(value >> 1);
+
+        Reg.ZeroFlag = value == 0;
+        Reg.SubtractFlag = false;
+        Reg.HalfCarryFlag = false;
+        Reg.CarryFlag = carry != 0;
+
+        return value;
+    }
+
+    /// <summary>
+    /// Rotate right a byte
+    /// </summary>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    private byte RotateRight(byte value)
+    {
+        int oldCarryBit = (Reg.CarryFlag ? 1 : 0) << 7;
+        int carry = value & 0x01;
+
+        value = (byte)(value >> 1);
+        value = (byte)(value | oldCarryBit);
+
+        Reg.CarryFlag = carry != 0;
+        Reg.ZeroFlag = value == 0;
+        Reg.SubtractFlag = false;
+        Reg.HalfCarryFlag = false;
+
+        return value;
+    }
+
+    /// <summary>
+    /// Rotate left a byte
+    /// </summary>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    private byte RotateLeft(byte value)
+    {
+        int oldCarryBit = Reg.CarryFlag ? 1 : 0;
+        int carry = (value >> 7) & 0x01;
+
+        value = (byte)(value << 1);
+        value = (byte)(value | oldCarryBit);
+
+        Reg.CarryFlag = carry != 0;
+        Reg.ZeroFlag = value == 0;
+        Reg.SubtractFlag = false;
+        Reg.HalfCarryFlag = false;
+
+        return value;
+    }
+
+    /// <summary>
+    /// Rotate right a value without carry
+    /// </summary>
+    /// <returns></returns>
+    private byte RotateRightNoCarry(byte value)
+    {
+        int carryBit = value & 0x01;
+        value = (byte)(value >> 1);
+
+        int inject = carryBit << 7;
+        value = (byte)(value | inject);
+
+        Reg.CarryFlag = carryBit != 0;
+        Reg.ZeroFlag = value == 0;
+        Reg.SubtractFlag = false;
+        Reg.HalfCarryFlag = false;
+
+        return value;
+    }
+
+    /// <summary>
+    /// Rotate left a value without carry
+    /// </summary>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    private byte RotateLeftNoCarry(byte value)
+    {
+        int carryBit = (value >> 7) & 0x01;
+        value = (byte)(value << 1);
+
+        value = (byte)(value | carryBit);
+
+        Reg.CarryFlag = carryBit != 0;
+        Reg.ZeroFlag = value == 0;
+        Reg.SubtractFlag = false;
+        Reg.HalfCarryFlag = false;
+
+        return value;
+    }
+
+    /// <summary>
+    /// Shift right a bit arithmetically
+    /// </summary>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    private byte ShiftRightArithmetic(byte value)
+    {
+        int carry = value & 0x01;
+        int signBit = value & 0x80;
+
+        value = (byte)(value >> 1);
+        value = (byte)(value | signBit);
+
+        Reg.ZeroFlag = value == 0;
+        Reg.SubtractFlag = false;
+        Reg.HalfCarryFlag = false;
+        Reg.CarryFlag = carry != 0;
+
+        return value;
+    }
+
+    /// <summary>
+    /// Shift left a bit arithmetically
+    /// </summary>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    private byte ShiftLeftArithmetic(byte value)
+    {
+        int carry = (value >> 7) & 0x01;
+        value = (byte)(value << 1);
+
+        Reg.ZeroFlag = value == 0;
+        Reg.SubtractFlag = false;
+        Reg.HalfCarryFlag = false;
+        Reg.CarryFlag = carry != 0;
+
+        return value;
+    }
+
+    /// <summary>
+    /// Swap the top nibble with the lower nibble
+    /// </summary>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    private byte SwapNibbles(byte value)
+    {
+        var highNibble = (value & 0xf0) >> 4;
+        var lowNibble = (value & 0x0f) << 4;
+
+        value = (byte)(highNibble | lowNibble);
+
+        Reg.ZeroFlag = value == 0;
+        Reg.SubtractFlag = false;
+        Reg.HalfCarryFlag = false;
+        Reg.CarryFlag = false;
+
+        return value;
+    }
+
+    /// <summary>
+    /// Read 16 bit little endian address
+    /// </summary>
+    /// <returns></returns>
+    private ushort ReadWordAtPC()
+    {
+        byte low = Bus.ReadByte(ProgramCounter);
+        byte high = Bus.ReadByte((ushort)(ProgramCounter + 1));
+        return (ushort)((high << 8) | low);
+    }
+
+    /// <summary>
+    /// Checking the jump condition
+    /// </summary>
+    /// <param name="cond"></param>
+    /// <returns></returns>
+    private bool CheckJumpCondition(JumpCondition cond)
+    {
+        return cond switch
+        {
+            JumpCondition.Always => true,
+            JumpCondition.Zero => Reg.ZeroFlag,
+            JumpCondition.NotZero => !Reg.ZeroFlag,
+            JumpCondition.Carry => Reg.CarryFlag,
+            JumpCondition.NotCarry => !Reg.CarryFlag,
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// Make an absolute jump
+    /// </summary>
+    /// <param name="cond"></param>
+    /// <returns></returns>
+    private ushort JumpAbsolute(JumpCondition cond)
+    {
+        ushort target = ReadWordAtPC();
+        bool shouldJump = CheckJumpCondition(cond);
+
+        if (!shouldJump)
+            return 2;
+
+        int diff = target - ProgramCounter;
+        return (ushort)diff;
+    }
+
+    /// <summary>
+    /// Make a relative jump
+    /// </summary>
+    /// <param name="cond"></param>
+    /// <returns></returns>
+    private ushort JumpRelative(JumpCondition cond)
+    {
+        sbyte offset = (sbyte)Bus.ReadByte(ProgramCounter);
+        bool shouldJump = CheckJumpCondition(cond);
+
+        if (!shouldJump)
+            return 1; // skip: JR is 2 bytes total
+
+        // PC currently points to the offset byte.
+        // We want: newPC = ProgramCounter + 1 + offset
+        int target = ProgramCounter + 1 + offset;
+
+        int diff = target - ProgramCounter;
+        return (ushort)diff;
+    }
+
+    /// <summary>
+    /// Stupid jump from HL for some reason
+    /// </summary>
+    /// <returns></returns>
+    private ushort JumpHL()
+    {
+        ushort target = Reg.HL;  // where we’re going
+        int diff = target - ProgramCounter;  // how far to move PC
+        return (ushort)diff;
+    }
+
+    /// <summary>
+    /// Reading some fuckass byte
+    /// </summary>
+    /// <param name="source"></param>
+    /// <returns></returns>
+    private byte Read8(LoadByteSource source)
+    {
+        return source switch
+        {
+            LoadByteSource.A => Reg.A,
+            LoadByteSource.B => Reg.B,
+            LoadByteSource.C => Reg.C,
+            LoadByteSource.D => Reg.D,
+            LoadByteSource.E => Reg.E,
+            LoadByteSource.H => Reg.H,
+            LoadByteSource.L => Reg.L,
+            LoadByteSource.D8 => Bus.ReadByte(ProgramCounter), // immediate
+            LoadByteSource.HLI => Bus.ReadByte(Reg.HL),
+            _ => 0
+        };
+    }
+
+    /// <summary>
+    /// Writing some fuckass byte
+    /// </summary>
+    /// <param name="target"></param>
+    /// <param name="value"></param>
+    private void Write8(LoadByteTarget target, byte value)
+    {
+        switch (target)
+        {
+            case LoadByteTarget.A: Reg.A = value; break;
+            case LoadByteTarget.B: Reg.B = value; break;
+            case LoadByteTarget.C: Reg.C = value; break;
+            case LoadByteTarget.D: Reg.D = value; break;
+            case LoadByteTarget.E: Reg.E = value; break;
+            case LoadByteTarget.H: Reg.H = value; break;
+            case LoadByteTarget.L: Reg.L = value; break;
+            case LoadByteTarget.HLI: Bus.WriteByte(Reg.HL, value); break;
+        }
+    }
+
+    /// <summary>
+    /// Loading some fuckass byte
+    /// </summary>
+    /// <param name="target"></param>
+    /// <param name="source"></param>
+    /// <returns></returns>
+    private ushort Load8(LoadByteTarget target, LoadByteSource source)
+    {
+        byte value = Read8(source);
+        Write8(target, value);
+
+        // If the source was an immediate byte (D8),
+        // the instruction length is 2 bytes total.
+        return source == LoadByteSource.D8 ? (ushort)1 : (ushort)0;
+    }
+
+    /// <summary>
+    /// Push a 16 bit value to the downward growing stack cus this shit stinsk
+    /// </summary>
+    /// <param name="value"></param>
+    private void Push16(ushort value)
+    {
+        // Write high byte first
+        unchecked
+        {
+            ProgramCounter = ProgramCounter; // no-op, keeps analyzer quiet if needed
+        }
+
+        Reg.SP--;
+        Bus.WriteByte(Reg.SP, (byte)(value >> 8));
+
+        Reg.SP--;
+        Bus.WriteByte(Reg.SP, (byte)(value & 0xFF));
+    }
+
+    /// <summary>
+    /// Pop a 16 bit value and blow it up
+    /// </summary>
+    /// <returns></returns>
+    private ushort Pop16()
+    {
+        byte low = Bus.ReadByte(Reg.SP);
+        Reg.SP++;
+
+        byte high = Bus.ReadByte(Reg.SP);
+        Reg.SP++;
+
+        return (ushort)((high << 8) | low);
+    }
+
+    /// <summary>
+    /// Calls an address through a telephone line I think
+    /// "hello?" "SHUT UP"
+    /// </summary>
+    /// <param name="cond"></param>
+    /// <returns></returns>
+    private ushort CallAbsolute(JumpCondition cond)
+    {
+        ushort target = ReadWordAtPC();
+        bool shouldCall = CheckJumpCondition(cond);
+
+        if (!shouldCall)
+        {
+            // CALL is 3 bytes total; Step already consumed 1
+            return 2;
+        }
+
+        // Return address = PC after the two operand bytes
+        ushort returnAddress = (ushort)(ProgramCounter + 2);
+        Push16(returnAddress);
+
+        int diff = target - ProgramCounter;
+        return (ushort)diff;
+    }
+
+    /// <summary>
+    /// Return from a spam call
+    /// "ugh i need to work"
+    /// </summary>
+    /// <param name="cond"></param>
+    /// <returns></returns>
+    private ushort ReturnFromCall(JumpCondition cond)
+    {
+        bool shouldReturn = CheckJumpCondition(cond);
+
+        if (!shouldReturn)
+            return 0;
+
+        ushort target = Pop16();
+        int diff = target - ProgramCounter;
+        return (ushort)diff;
+    }
+
+    /// <summary>
+    /// Restart the app for some reason like Hello, world!
+    /// </summary>
+    /// <param name="vector"></param>
+    /// <returns></returns>
+    private ushort Restart(byte vector)
+    {
+        // Push current PC (already pointing to next instruction)
+        Push16(ProgramCounter);
+
+        // Jump to fixed vector
+        int diff = vector - ProgramCounter;
+        return (ushort)diff;
+    }
+
 
     // ================== END HELPER ==================
 
-    // ================== OPCODE METHODS ==================
+    // ================== START UTILITY OPCODES ==================
+    private ushort Opcode_07() { RotateLeftARegisterNoCarry(); return 4; }   // RLCA
+    private ushort Opcode_17() { RotateLeftARegister(); return 4; }   // RLA
+    private ushort Opcode_0F() { RotateRightARegisterNoCarry(); return 4; }  // RRCA
+    private ushort Opcode_1F() { RotateRightARegister(); return 4; }  // RRA
+    private ushort Opcode_2F() { Complement(); return 4; }
+    private ushort Opcode_37() { SetCarryFlag(); return 4; }
+    private ushort Opcode_3F() { ComplementCarryFlag(); return 4; }
+    private ushort Opcode_00() { return 4; }
 
-    private void AddA(byte value)
-        => Reg.A = Add(value);
+    private ushort Opcode_76() { IsHalted = true; return 0; }
 
-    private void AddHL(ushort value)
-        => Reg.HL = Add16(Reg.HL, value);
 
-    private void Adc(byte value)
-        => Reg.A = AddWithCarry(value);
-
-    private void SubA(byte value)
-        => Reg.A = Sub(value);
-
-    private void Sbc(byte value)
-        => Reg.A = SubWithCarry(value);
-
-    private void And(byte value)
-        => Reg.A = BitwiseAnd(value);
-
-    private void Or(byte value)
-        => Reg.A = BitwiseOr(value);
-
-    private void Xor(byte value)
-        => Reg.A = BitwiseXor(value);
-
-    private void Cp(byte value)
-        => Compare(value);
-
-    private void Inc(byte value)
-        => Increment(value);
-
-    private void Dec(byte value)
-        => Decrement(value);
-
-    private void Ccf()
-        => ComplementCarryFlag();
-
-    private void Scf()
-        => SetCarryFlag();
-
-    private void Rra()
-        => RotateRightARegister();
-
-    private void Rla()
-        => RotateLeftARegister();
-
-    private void Rrca()
-        => RotateRightARegisterNoCarry();
-
-    private void Rrla()
-        => RotateLeftARegisterNoCarry();
-    
-    private void Cpl()
-        => Complement();
-
-    // ================== END OPCODES ==================
 }

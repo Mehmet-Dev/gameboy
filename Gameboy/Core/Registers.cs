@@ -2,6 +2,8 @@ namespace Gameboy.Core;
 
 public struct Registers
 {
+    public ushort SP { get; set; }
+
     // 8 bit registers
     public byte A;
     public byte F; // lower 4 bits are flags
@@ -15,7 +17,6 @@ public struct Registers
     public byte H;
     public byte L;
 
-    
     public ushort AF
     {
         get => (ushort)((A << 8) | F);
