@@ -238,6 +238,76 @@ public class CPU
         Reg.HalfCarryFlag = false;
     }
 
+    /// <summary>
+    /// Bit rotate A register left through the carry flag
+    /// </summary>
+    private void RotateLeftARegister()
+    {
+        int oldCarryBit = Reg.CarryFlag ? 1 : 0;
+        int carry = (Reg.A >> 7) & 0x01;
+
+        Reg.A = (byte)(Reg.A << 1);
+        Reg.A = (byte)(Reg.A | oldCarryBit);
+
+        Reg.CarryFlag = carry != 0;
+        Reg.ZeroFlag = false;
+        Reg.SubtractFlag = false;
+        Reg.HalfCarryFlag = false;
+    }
+
+    /// <summary>
+    /// Bit rotate A register right 
+    /// </summary>
+    private void RotateRightARegisterNoCarry()
+    {
+        int carryBit = Reg.A & 0x01;
+        Reg.A = (byte)(Reg.A >> 1);
+
+        int inject = carryBit << 7;
+        Reg.A = (byte)(Reg.A | inject);
+
+        Reg.CarryFlag = carryBit != 0;
+        Reg.ZeroFlag = false;
+        Reg.SubtractFlag = false;
+        Reg.HalfCarryFlag = false;
+    }
+
+    /// <summary>
+    /// Bit rotate A register left without carry
+    /// </summary>
+    private void RotateLeftARegisterNoCarry()
+    {
+        int carryBit = (Reg.A >> 7) & 0x01;
+        Reg.A = (byte)(Reg.A << 1);
+
+        Reg.A = (byte)(Reg.A | carryBit);
+
+        Reg.CarryFlag = carryBit != 0;
+        Reg.ZeroFlag = false;
+        Reg.SubtractFlag = false;
+        Reg.HalfCarryFlag = false;
+    }
+
+    /// <summary>
+    /// Do a bitwise XOR on every bit in Registry A
+    /// </summary>
+    private void Complement()
+    {
+        Reg.A = (byte)(Reg.A ^ 0xff);
+
+        Reg.SubtractFlag = true;
+        Reg.HalfCarryFlag = true;
+    }
+
+    /// <summary>
+    /// Test whether a bit is set ? gameboy emulators smell wtf
+    /// </summary>
+    /// <param name="bit"></param>
+    private void BitTest(int bit)
+    {
+        
+    }
+
     // ================== END HELPER ==================
 
     // ================== OPCODE METHODS ==================
@@ -280,9 +350,21 @@ public class CPU
 
     private void Scf()
         => SetCarryFlag();
-    
+
     private void Rra()
         => RotateRightARegister();
+
+    private void Rla()
+        => RotateLeftARegister();
+
+    private void Rrca()
+        => RotateRightARegisterNoCarry();
+
+    private void Rrla()
+        => RotateLeftARegisterNoCarry();
+    
+    private void Cpl()
+        => Complement();
 
     // ================== END OPCODES ==================
 }
