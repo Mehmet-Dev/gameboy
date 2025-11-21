@@ -3,7 +3,6 @@ namespace Gameboy.Core;
 public partial class CPU
 {
     // ================== START OR OPCODES ==================
-
     private ushort Opcode_B0() { Reg.A = BitwiseOr(Reg.B); return 4; }
     private ushort Opcode_B1() { Reg.A = BitwiseOr(Reg.C); return 4; }
     private ushort Opcode_B2() { Reg.A = BitwiseOr(Reg.D); return 4; }
