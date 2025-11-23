@@ -8,13 +8,13 @@ public partial class CPU
     private ushort Opcode_F3()
     {
         InterruptsEnabled = false;
-        return 0;
+        return 4;
     }
 
     // EI — Enable interrupts after the next instruction
     private ushort Opcode_FB()
     {
         EnableInterruptsAfterNextInstruction = true;
-        return 0;
+        return 4;
     }
 }

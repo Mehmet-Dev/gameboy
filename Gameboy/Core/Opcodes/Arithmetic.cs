@@ -27,7 +27,7 @@ public partial class CPU
     private ushort Opcode_39() { Reg.HL = Add16(Reg.HL, Reg.SP); return 8; }
 
     // ================== END ADD OPCODES ==================
-    
+
     // ================== START SUB OPCODES ==================
     private ushort Opcode_90() { Reg.A = Sub(Reg.B); return 4; }
     private ushort Opcode_91() { Reg.A = Sub(Reg.C); return 4; }
@@ -78,6 +78,71 @@ public partial class CPU
         return 8;
     }
     // ================== END ADC OPCODES ==================
-    
-    
+    // some other 16 bit arithmetic i forgot about
+
+    private ushort Opcode_03()   // INC BC
+    {
+        Reg.BC++;
+        return 8;
+    }
+
+    private ushort Opcode_13()   // INC DE
+    {
+        Reg.DE++;
+        return 8;
+    }
+
+    private ushort Opcode_23()   // INC HL
+    {
+        Reg.HL++;
+        return 8;
+    }
+
+    private ushort Opcode_33()   // INC SP
+    {
+        Reg.SP++;
+        return 8;
+    }
+
+    private ushort Opcode_0B()   // DEC BC
+    {
+        Reg.BC--;
+        return 8;
+    }
+
+    private ushort Opcode_1B()   // DEC DE
+    {
+        Reg.DE--;
+        return 8;
+    }
+
+    private ushort Opcode_2B()   // DEC HL
+    {
+        Reg.HL--;
+        return 8;
+    }
+
+    private ushort Opcode_3B()   // DEC SP
+    {
+        Reg.SP--;
+        return 8;
+    }
+
+    private ushort Opcode_E8()
+    {
+        sbyte offset = (sbyte)Bus.ReadByte(ProgramCounter);
+        ProgramCounter++;
+
+        int low = Reg.SP & 0xff;
+        int uoffset = offset & 0xff;
+
+        Reg.ZeroFlag = false;
+        Reg.SubtractFlag = false;
+        Reg.HalfCarryFlag = ((low & 0xF) + (uoffset & 0xF)) > 0xF;
+        Reg.CarryFlag = (low + uoffset) > 0xFF;
+
+        Reg.SP = (ushort)(Reg.SP + offset);
+
+        return 16;
+    }
 }

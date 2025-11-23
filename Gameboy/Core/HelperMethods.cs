@@ -726,5 +726,44 @@ public partial class CPU
 
     private ushort Opcode_76() { IsHalted = true; return 0; }
 
+    private ushort Opcode_10()
+    {
+        // STOP includes a mandatory padding byte that must be read
+        ProgramCounter++;  // consume the 0x00 byte after STOP
+
+        IsStopped = true;   // or create IsStopped if you want
+        return 4;          // STOP takes 4 cycles
+    }
+
+    private ushort Opcode_27()  // DAA
+    {
+        int a = Reg.A;
+
+        if (!Reg.SubtractFlag)  // last op was addition
+        {
+            if (Reg.CarryFlag || a > 0x99)
+            {
+                a += 0x60;
+                Reg.CarryFlag = true;
+            }
+
+            if (Reg.HalfCarryFlag || ((a & 0x0F) > 0x09))
+            {
+                a += 0x06;
+            }
+        }
+        else  // last op was subtraction
+        {
+            if (Reg.CarryFlag) a -= 0x60;
+            if (Reg.HalfCarryFlag) a -= 0x06;
+        }
+
+        Reg.A = (byte)(a & 0xFF);
+
+        Reg.ZeroFlag = (Reg.A == 0);
+        Reg.HalfCarryFlag = false;
+
+        return 4;
+    }
 
 }

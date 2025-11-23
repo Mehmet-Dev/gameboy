@@ -121,4 +121,98 @@ public partial class CPU
 
 
     // ================== END 8-BIT LOAD OPCODES ==================
+    // now we start with the 16-BIT LOAD OPCODES HURRAY
+
+    private ushort Opcode_01()
+    {
+        ushort value = ReadWordAtPC();
+        Reg.BC = value;
+        ProgramCounter += 2;
+        return 12;
+    }
+
+    private ushort Opcode_11()
+    {
+        ushort value = ReadWordAtPC();
+        Reg.DE = value;
+        ProgramCounter += 2;
+        return 12;
+    }
+
+    private ushort Opcode_21()
+    {
+        ushort value = ReadWordAtPC();
+        Reg.HL = value;
+        ProgramCounter += 2;
+        return 12;
+    }
+
+    private ushort Opcode_31()
+    {
+        ushort value = ReadWordAtPC();
+        Reg.SP = value;
+        ProgramCounter += 2;
+        return 12;
+    }
+
+    private ushort Opcode_08()
+    {
+        ushort addr = ReadWordAtPC();
+        ProgramCounter += 2;
+
+        byte lo = (byte)(Reg.SP & 0xff);
+        byte hi = (byte)(Reg.SP >> 8);
+
+        Bus.WriteByte(addr, lo);
+        Bus.WriteByte((ushort)(addr + 1), hi);
+
+        return 20;
+    }
+
+    private ushort Opcode_F9()
+    {
+        Reg.SP = Reg.HL;
+        return 8;
+    }
+
+    private ushort Opcode_F8()
+    {
+        sbyte offset = (sbyte)Bus.ReadByte(ProgramCounter);
+        ProgramCounter++;
+
+        int result = Reg.SP + offset;
+
+        int low = (Reg.SP & 0xff);
+        int uoffset = (offset & 0xff);
+
+        Reg.ZeroFlag = false;
+        Reg.SubtractFlag = false;
+        Reg.HalfCarryFlag = ((low & 0xF) + (uoffset & 0xF)) > 0xF;
+        Reg.CarryFlag = (low + uoffset) > 0xFF;
+
+        Reg.HL = (ushort)result;
+
+        return 12;
+    }
+
+    private ushort Opcode_FA()
+    {
+        ushort addr = ReadWordAtPC();
+        ProgramCounter += 2;
+
+        Reg.A = Bus.ReadByte(addr);
+
+        return 16;
+    }
+
+    private ushort Opcode_EA()
+    {
+        ushort addr = ReadWordAtPC();
+        ProgramCounter += 2;
+
+        Bus.WriteByte(addr, Reg.A);
+
+        return 16;
+    }
+
 }

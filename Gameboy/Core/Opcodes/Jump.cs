@@ -9,38 +9,52 @@ public partial class CPU
     // JP nn (unconditional)
     private ushort Opcode_C3()
     {
-        return JumpAbsolute(JumpCondition.Always);
+        ushort diff = JumpAbsolute(JumpCondition.Always);
+        ProgramCounter += diff;
+        return 16; // JP nn always 16 cycles
     }
 
     // JP NZ,nn
     private ushort Opcode_C2()
     {
-        return JumpAbsolute(JumpCondition.NotZero);
+        ushort diff = JumpAbsolute(JumpCondition.NotZero);
+        ProgramCounter += diff;
+        // not taken: diff == 2 (just skip immediate)
+        return diff == 2 ? (ushort)12 : (ushort)16;
     }
 
     // JP Z,nn
     private ushort Opcode_CA()
     {
-        return JumpAbsolute(JumpCondition.Zero);
+        ushort diff = JumpAbsolute(JumpCondition.Zero);
+        ProgramCounter += diff;
+        return diff == 2 ? (ushort)12 : (ushort)16;
     }
 
     // JP NC,nn
     private ushort Opcode_D2()
     {
-        return JumpAbsolute(JumpCondition.NotCarry);
+        ushort diff = JumpAbsolute(JumpCondition.NotCarry);
+        ProgramCounter += diff;
+        return diff == 2 ? (ushort)12 : (ushort)16;
     }
 
     // JP C,nn
     private ushort Opcode_DA()
     {
-        return JumpAbsolute(JumpCondition.Carry);
+        ushort diff = JumpAbsolute(JumpCondition.Carry);
+        ProgramCounter += diff;
+        return diff == 2 ? (ushort)12 : (ushort)16;
     }
 
     // JP (HL)
     private ushort Opcode_E9()
     {
-        return JumpHL();
+        ushort diff = JumpHL();
+        ProgramCounter += diff;
+        return 4; // JP (HL) is 4 cycles
     }
+
 
     // ================== END JP OPCODES ==================
 
@@ -50,32 +64,44 @@ public partial class CPU
     // JR r8 (unconditional)
     private ushort Opcode_18()
     {
-        return JumpRelative(JumpCondition.Always);
+        ushort diff = JumpRelative(JumpCondition.Always);
+        ProgramCounter += diff;
+        return 12; // always taken
     }
 
     // JR NZ,r8
     private ushort Opcode_20()
     {
-        return JumpRelative(JumpCondition.NotZero);
+        ushort diff = JumpRelative(JumpCondition.NotZero);
+        ProgramCounter += diff;
+        // not taken: diff == 1 (skip offset only)
+        return diff == 1 ? (ushort)8 : (ushort)12;
     }
 
     // JR Z,r8
     private ushort Opcode_28()
     {
-        return JumpRelative(JumpCondition.Zero);
+        ushort diff = JumpRelative(JumpCondition.Zero);
+        ProgramCounter += diff;
+        return diff == 1 ? (ushort)8 : (ushort)12;
     }
 
     // JR NC,r8
     private ushort Opcode_30()
     {
-        return JumpRelative(JumpCondition.NotCarry);
+        ushort diff = JumpRelative(JumpCondition.NotCarry);
+        ProgramCounter += diff;
+        return diff == 1 ? (ushort)8 : (ushort)12;
     }
 
     // JR C,r8
     private ushort Opcode_38()
     {
-        return JumpRelative(JumpCondition.Carry);
+        ushort diff = JumpRelative(JumpCondition.Carry);
+        ProgramCounter += diff;
+        return diff == 1 ? (ushort)8 : (ushort)12;
     }
+
 
     // ================== END JR OPCODES ==================
 }

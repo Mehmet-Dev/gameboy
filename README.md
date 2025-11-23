@@ -1,26 +1,24 @@
-# Game Boy Emulator (C#)
+# **Game Boy Emulator (C#)**
 
-This project is my attempt to build a complete, accurate, and maintainable emulator for the original Game Boy (DMG-01) using C#.
-It serves both as a learning project and as a long-term effort to recreate the hardware as faithfully as possible.
+This project is my long-term attempt to build a complete, accurate, and maintainable emulator for the original Game Boy (DMG-01) using C#.
 
-The goal is not just to get games running, but to understand and implement the underlying systems properly: CPU behavior, memory architecture, graphics timing, interrupts, cartridges, and more.
-
-This project will evolve slowly but steadily as each subsystem is built, tested, and refined.
+The aim is simple:
+understand the hardware, recreate it cleanly, and produce something that behaves like the real machine instead of a quick hack that only runs Tetris. The emulator grows one subsystem at a time, each implemented in-depth and documented along the way.
 
 ---
 
-## Objectives
+## **Objectives**
 
-* Understand the inner workings of the original Game Boy
-* Recreate hardware behavior in clean, idiomatic C#
-* Build a long-lasting, maintainable emulator architecture
+* Understand the internal architecture of the Game Boy
+* Recreate hardware behavior in clear, idiomatic C#
+* Build a stable emulator core designed to last
 * Support commercial ROMs accurately
-* Document the process and the system thoroughly
-* Produce a stable, accurate emulator rather than a quick one
+* Document decisions and hardware behavior
+* Favor correctness and maintainability over shortcuts
 
 ---
 
-## Project Structure
+## **Project Structure**
 
 ```
 /src
@@ -39,125 +37,122 @@ This project will evolve slowly but steadily as each subsystem is built, tested,
     Joypad.cs
 
   /Audio
-    APU.cs       (farther in development)
+    APU.cs
 
 Program.cs
 README.md
 ```
 
----
-
-## Progress Overview
-
-A high-level checklist of major components and their status.
-
-| Chapter | Description                    | Status                            |
-| ------- | ------------------------------ | --------------------------------- |
-| 1       | Project Setup                  | ☐                                 |
-| 2       | CPU Fundamentals               | ✔ (Core complete; needs testing)  |
-| 3       | Memory & MMU                   | ☐                                 |
-| 4       | Instruction Set Implementation | ✔ (All major opcodes implemented) |
-| 5       | Timers & Interrupts            | ☐                                 |
-| 6       | Graphics (PPU)                 | ☐                                 |
-| 7       | Input                          | ☐                                 |
-| 8       | Cartridge Mappers              | ☐                                 |
-| 9       | Audio (APU)                    | ☐                                 |
-| 10      | Polish, Debugging, Testing     | ☐                                 |
+This layout will expand as new subsystems are added (timers, MBC controllers, debugging tools, etc.)
 
 ---
 
-## Development Roadmap
+## **Progress Overview**
 
-This is the planned order in which the emulator’s components will be built.
-Some stages may overlap as subsystems interact.
+A high-level summary of the emulator’s current state:
 
-### 1. Project Setup
+| Chapter | Description                    | Status                              |
+| ------- | ------------------------------ | ----------------------------------- |
+| 1       | Project Setup                  | ✔                                   |
+| 2       | CPU Fundamentals               | ✔ (Core complete; needs validation) |
+| 3       | Memory & MMU                   | ☐                                   |
+| 4       | Instruction Set Implementation | ✔ (All opcodes implemented)         |
+| 5       | Timers & Interrupts            | ☐                                   |
+| 6       | Graphics (PPU)                 | ☐                                   |
+| 7       | Input                          | ☐                                   |
+| 8       | Cartridge Mappers              | ☐                                   |
+| 9       | Audio (APU)                    | ☐                                   |
+| 10      | Debugging & Testing            | ☐                                   |
 
-* Folder organization
-* `.gitignore`
-* Initial README
-* Base project settings
+---
 
-### 2. CPU Fundamentals
+## **Development Roadmap**
 
-* Registers and flags
-* Instruction tables
-* Fetch–decode–execute loop
-* Basic debugging helpers
+The planned order of subsystem implementation.
+Each piece will be built, tested, and refined before moving on.
 
-### 3. Memory & MMU
+### **1. Project Setup**
 
-* Full memory map
-* Read/write behavior
+* Folder structure
+* Build rules
+* Initial documentation
+
+### **2. CPU Fundamentals**
+
+* Registers, flags, and fetch-decode-execute loop
+* Opcode tables
+* Core helpers
+* Early behavior testing
+
+### **3. Memory & MMU**
+
+* Full DMG memory map
+* Read/write rules
 * Cartridge loading
-* MBC0 fixed banking
+* Initial MBC0 implementation
 
-### 4. Instruction Set
+### **4. Instruction Set**
 
-* Arithmetic and logic
-* Load/store instructions
+* All arithmetic and logic
+* Loads/stores
 * Jumps, calls, returns
-* 16-bit instructions
 * CB-prefixed instructions
-* Full CPU behavioral coverage
-* Early test ROMs for validation
+* Verified CPU behavior
 
-### 5. Timers & Interrupts
+### **5. Timers & Interrupts**
 
 * DIV, TIMA, TMA, TAC
-* IF/IE registers
-* Interrupt dispatching
-* Cycle-accurate timing
+* Interrupt enable/flag registers
+* Full interrupt dispatch
+* Cycle-accurate timer behavior
 
-### 6. Graphics (PPU)
+### **6. Graphics (PPU)**
 
 * VRAM and OAM
-* LCD controller state machine
-* Tile/background rendering
-* Scanline pipeline
-* First graphical output
+* LCDC/STAT behavior
+* Mode 0/1/2/3 pipeline
+* Background/tile rendering
+* First frame output
 
-### 7. Input
+### **7. Input**
 
-* Joypad register behavior
-* Keyboard mapping
+* Joypad register
+* Button edge behavior
+* Keyboard/controller mapping
 
-### 8. Cartridge Mappers
+### **8. Cartridge Mappers**
 
 * MBC1
-* MBC3 (with optional RTC)
+* MBC3 (RTC optional)
 * MBC5
-* Save RAM
+* Save RAM persistence
 
-### 9. Audio (APU)
+### **9. Audio (APU)**
 
 * Square channels
 * Wave channel
 * Noise channel
-* Mixing and timing
+* Mixer and timing
 
-### 10. Debugging & Polish
+### **10. Debugging & Polish**
 
-* Step/run execution controls
-* Memory viewers
 * Breakpoints
 * Logging
-* Compatibility testing
-* Cleanup and documentation
+* CPU/PPU inspectors
+* Cleanup and refinement
 
 ---
 
-## Requirements
+## **Requirements**
 
 * .NET 8 or newer
-* Visual Studio Code or any C#-compatible IDE
-* (Optional) SDL2-CS or Raylib-CS for graphics/audio output later
+* Any C# IDE (VS Code, Rider, Visual Studio)
+* (Optional) Raylib-CS or SDL2-CS for display/audio
 
 ---
 
-## Current Status
+## **Current Status**
 
-The CPU core and nearly all instructions have been implemented, including stack behavior, calls, returns, jumps, CB opcodes, and control flow.
-Memory mapping, interrupts, and graphics subsystems are the next major tasks.
+The CPU core is complete, including all documented Game Boy opcodes, stack operations, control flow, CB instructions, and the DAA edge case. What remains is wiring the MMU correctly, finishing the interrupt system, and building the graphics/timer subsystems.
 
-This emulator is still in its early lifecycle, but the foundation is solid and designed to grow cleanly as more hardware components are added.
+The project is early-stage, but the foundation is solid and ready for the more complex hardware components.
