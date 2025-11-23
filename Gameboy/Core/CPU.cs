@@ -19,41 +19,30 @@ public partial class CPU
     private OpcodeHandler[] OpcodeTable = new OpcodeHandler[0x100];
     private OpcodeHandler[] CbOpcodeTable = new OpcodeHandler[0x100];
 
-    /// <summary>
-    /// Run the program i think
-    /// </summary>
     private void Step()
     {
-        ushort extra;
-        byte opcode = Bus.ReadByte(ProgramCounter);
-        ProgramCounter++;
-
         if (IsHalted)
         {
-            // CPU does nothing this cycle
-            // (Game Boy still consumes cycles, but runs no opcode)
+            // Eventually you will add cycle timing here.
             return;
         }
+
+        byte opcode = Bus.ReadByte(ProgramCounter);
+        ProgramCounter++;
 
         if (opcode == 0xCB)
         {
             byte cb = Bus.ReadByte(ProgramCounter);
             ProgramCounter++;
-            extra = CbOpcodeTable[cb]();
-            ProgramCounter += extra;
 
-            if (EnableInterruptsAfterNextInstruction)
-            {
-                InterruptsEnabled = true;
-                EnableInterruptsAfterNextInstruction = false;
-            }
-
+            ushort cycles = CbOpcodeTable[cb]();
             return;
         }
 
-        extra = OpcodeTable[opcode]();
-        ProgramCounter += extra;
+        ushort cyclesReturned = OpcodeTable[opcode]();
     }
+
+
 
     private ushort Cb_Unimplemented()
     {

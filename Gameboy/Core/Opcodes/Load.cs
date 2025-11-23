@@ -95,5 +95,30 @@ public partial class CPU
         return 0;
     }
 
+    private ushort Opcode_F2()
+    {
+        byte value = Bus.ReadByte((ushort)(0xFF00 + Reg.C));
+        Reg.A = value;
+        return 0;
+    }
+
+    private ushort Opcode_E2() { Bus.WriteByte((ushort)(0xFF00 + Reg.C), Reg.A); return 0; }
+
+    private ushort Opcode_F0()
+    {
+        byte source = Read8(LoadByteSource.D8);
+        Reg.A = Bus.ReadByte((ushort)(0xff00 + source));
+        return 1;
+    }
+
+    private ushort Opcode_E0()
+    {
+        byte offset = Bus.ReadByte(ProgramCounter);   // read d8
+        ushort addr = (ushort)(0xFF00 + offset);      // compute FF00 + d8
+        Bus.WriteByte(addr, Reg.A);                   // store A into memory
+        return 1;                                     // consume the immediate byte
+    }
+
+
     // ================== END 8-BIT LOAD OPCODES ==================
 }

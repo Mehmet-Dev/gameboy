@@ -81,10 +81,11 @@ public partial class CPU
     // RETI (Return and enable interrupts)
     private ushort Opcode_D9()
     {
-        ushort diff = ReturnFromCall(JumpCondition.Always);
-        InterruptsEnabled = true;    // or IME = true if you use that name
-        return diff;
+        ProgramCounter = Pop16();
+        InterruptsEnabled = true;
+        return 16;
     }
+
 
     // ================== END SPECIAL RETURN OPCODES ==================
 }

@@ -665,22 +665,20 @@ public partial class CPU
     /// <returns></returns>
     private ushort CallAbsolute(JumpCondition cond)
     {
-        ushort target = ReadWordAtPC();
-        bool shouldCall = CheckJumpCondition(cond);
+        ushort target = ReadWordAtPC(); // does NOT increment PC
+        ProgramCounter += 2;            // consume immediate operands
 
-        if (!shouldCall)
-        {
-            // CALL is 3 bytes total; Step already consumed 1
-            return 2;
-        }
+        if (!CheckJumpCondition(cond))
+            return 12;                 // CALL not taken
 
-        // Return address = PC after the two operand bytes
-        ushort returnAddress = (ushort)(ProgramCounter + 2);
+        // push address of next instruction
+        ushort returnAddress = ProgramCounter;
         Push16(returnAddress);
 
-        int diff = target - ProgramCounter;
-        return (ushort)diff;
+        ProgramCounter = target;        // jump directly
+        return 24;                      // CALL taken
     }
+
 
     /// <summary>
     /// Return from a spam call
@@ -690,15 +688,13 @@ public partial class CPU
     /// <returns></returns>
     private ushort ReturnFromCall(JumpCondition cond)
     {
-        bool shouldReturn = CheckJumpCondition(cond);
+        if (!CheckJumpCondition(cond))
+            return 8;                   // RET not taken
 
-        if (!shouldReturn)
-            return 0;
-
-        ushort target = Pop16();
-        int diff = target - ProgramCounter;
-        return (ushort)diff;
+        ProgramCounter = Pop16();       // jump to return
+        return 16;                      // RET taken
     }
+
 
     /// <summary>
     /// Restart the app for some reason like Hello, world!
