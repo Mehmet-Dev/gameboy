@@ -1,4 +1,4 @@
-using Gameboy.Utils;
+using Gameboy.Graphics;
 
 namespace Gameboy.Core;
 
@@ -15,6 +15,8 @@ public partial class CPU
     private bool EnableInterruptsAfterNextInstruction;
     private bool IsHalted;
     private bool IsStopped;
+    private int DivCounter = 0;
+    private int TimerCounter = 0;
 
     public delegate ushort OpcodeHandler();
     private OpcodeHandler[] OpcodeTable = new OpcodeHandler[0x100];
@@ -22,24 +24,24 @@ public partial class CPU
 
     private void Step()
     {
-        HandleInterrupts();
-        if (IsStopped)
-        {
-            // STOP waits for input, not interrupts
-            // if (Bus.Input.AnyKeyPressed())
-            //     IsStopped = false;
-
-            return;
-        }
-
+        // 1. HALT wake check BEFORE interrupt execution
         if (IsHalted)
         {
-            // HALT wakes on interrupt
-            // if (InterruptTriggered())
-            //     IsHalted = false;
-
-            return;
+            if (InterruptsPending())
+                IsHalted = false;
+            else
+                return; // still halted
         }
+
+        // 2. STOP only wakes on input (not interrupts)
+        if (IsStopped)
+            return;
+
+        // 3. Execute interrupt if IME = 1
+        if (InterruptsEnabled)
+            if (HandleInterruptExecution())
+                return; // interrupt consumed cycle, stop here
+
 
 
         byte opcode = Bus.ReadByte(ProgramCounter);
@@ -51,6 +53,7 @@ public partial class CPU
             ProgramCounter++;
 
             ushort cycles = CbOpcodeTable[cb]();
+            UpdateTimers(cycles);
 
             if (EnableInterruptsAfterNextInstruction)
             {
@@ -61,6 +64,7 @@ public partial class CPU
         }
 
         ushort cyclesReturned = OpcodeTable[opcode]();
+        UpdateTimers(cyclesReturned);
 
         if (EnableInterruptsAfterNextInstruction)
         {
@@ -100,33 +104,99 @@ public partial class CPU
     }
 
     /// <summary>
-    /// A magical method that handles interrupts
-    /// Checks for every serious thing i think
+    /// The magical (newer) version fo handling interrupts.
+    /// They handle... stuff or whatever
     /// </summary>
-    private void HandleInterrupts()
+    /// <returns></returns>
+    private bool HandleInterruptExecution()
     {
-        if (!InterruptsEnabled)
-            return;
-
         byte ie = Bus.ReadByte(0xFFFF);
         byte iff = Bus.ReadByte(0xFF0F);
-
         byte pending = (byte)(ie & iff);
+
         if (pending == 0)
-            return;
+            return false; // nothing to do
 
-        // Disable interrupts immediately
-        InterruptsEnabled = false;
+        InterruptsEnabled = false;   // hardware behavior
+        IsHalted = false;            // HALT always ends
 
-        // Exit HALT if we were in HALT
-        IsHalted = false;
+        if ((pending & 0x01) != 0) { TriggerInterrupt(0x40, 0x01); return true; }
+        if ((pending & 0x02) != 0) { TriggerInterrupt(0x48, 0x02); return true; }
+        if ((pending & 0x04) != 0) { TriggerInterrupt(0x50, 0x04); return true; }
+        if ((pending & 0x08) != 0) { TriggerInterrupt(0x58, 0x08); return true; }
+        if ((pending & 0x10) != 0) { TriggerInterrupt(0x60, 0x10); return true; }
 
-        // Check each interrupt in priority order
-        if ((pending & 0x01) != 0) { TriggerInterrupt(0x40, 0x01); return; } // VBlank
-        if ((pending & 0x02) != 0) { TriggerInterrupt(0x48, 0x02); return; } // LCD STAT
-        if ((pending & 0x04) != 0) { TriggerInterrupt(0x50, 0x04); return; } // Timer
-        if ((pending & 0x08) != 0) { TriggerInterrupt(0x58, 0x08); return; } // Serial
-        if ((pending & 0x10) != 0) { TriggerInterrupt(0x60, 0x10); return; } // Joypad
+        return false;
     }
 
+    /// <summary>
+    /// Pending interrupts whatever UGH
+    /// </summary>
+    /// <returns></returns>
+    private bool InterruptsPending()
+    {
+        byte ie = Bus.ReadByte(0xFFFF);
+        byte iff = Bus.ReadByte(0xFF0F);
+        return (ie & iff) != 0;
+    }
+
+    /// <summary>
+    /// The special holy methd
+    /// </summary>
+    /// <param name="cyclesElapsed"></param>
+    /// <returns></returns>
+    private void UpdateTimers(int cycles)
+    {
+        // updating div
+        DivCounter += cycles;
+        if (DivCounter >= 256)
+        {
+            while (DivCounter >= 256)
+            {
+                DivCounter -= 256;
+                Bus.IncrementDIV();
+            }
+        }
+
+        bool timerEnabled = (Bus.GetTAC() & 0b00000100) != 0;
+
+        if (!timerEnabled)
+        {
+            TimerCounter = 0;
+            return;
+        }
+
+        int mode = Bus.GetTAC() & 0b00000011;
+
+        int threshold = mode switch
+        {
+            0 => 1024,
+            1 => 16,
+            2 => 64,
+            3 => 256,
+            _ => throw new NotImplementedException(),
+        };
+
+        // updating the timer counter
+        TimerCounter += cycles;
+
+        if (TimerCounter >= threshold)
+        {
+            while (TimerCounter >= threshold)
+            {
+                TimerCounter -= threshold;
+
+                byte tima = Bus.GetTIMA();
+                if (tima == 0xff)
+                {
+                    Bus.SetTIMA(Bus.GetTMA());
+                    Bus.RequestTimerInterrupt();
+                }
+                else
+                {
+                    Bus.SetTIMA((byte)(tima + 1));
+                }
+            }
+        }
+    }
 }
